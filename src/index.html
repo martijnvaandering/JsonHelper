@@ -1,0 +1,144 @@
+<html data-bs-theme="dark">
+
+<head>
+	<title>JsonHelper</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+	<style>
+		pre {
+			padding: 10px 20px;
+			margin: 20px;
+		}
+
+		.json-key {
+			color: #9cdcfe;
+		}
+
+		.json-key:hover {
+			color: red;
+		}
+
+		.json-value {
+			color: #7cb4a8;
+		}
+
+		.json-string {
+			color: #ce9178;
+		}
+
+		#jsonInput {
+			height: 100%;
+		}
+
+		.row {
+			height: calc(100% - 400px);
+			min-height: 300px;
+		}
+
+		#outputContainer {
+			min-height: calc(100% + 40px);
+		}
+
+		#output {
+			min-height: 400px;
+		}
+	</style>
+</head>
+
+<body>
+	<nav class="navbar navbar-expand-lg bg-body-tertiary">
+		<div class="container-fluid">
+			<h1>JsonHelper</h1>
+		</div>
+	</nav>
+	<div class="container">
+		<form>
+			<div class="row">
+				<div class="col col-6">
+					<div class="mb-4">
+						<label class="form-label" for="filter">Filter:</label>
+						<input type="text" class="form-control" name="filter" id="jsonFilter" value="." />
+					</div>
+					<div class="mb-4">
+						<label class="form-label" for="filter">Input:</label>
+						<textarea name="input" class="form-control" id="jsonInput" cols="30" rows="10"></textarea>
+					</div>
+				</div>
+				<div class="col col-6">
+					<div class="mb-4" id="inputsection">
+						<label for="output" class="form-label">Output:</label>
+						<div class="form-control">
+							<pre id="outputContainer"><code id="output">Not yet rendered...</code></pre>
+						</div>
+					</div>
+				</div>
+			</div>
+	</div>
+	<script>
+		var timer;
+		let counter = 0;
+		let jsonFuncs = function () {
+			replacer = function (match, pIndent, pKey, pVal, pEnd) {
+				var key = '<span class=json-key>';
+				var val = '<span class=json-value>';
+				var str = '<span class=json-string>';
+				var r = pIndent || '';
+				if (pKey)
+					r = r + key + pKey.replace(/[": ]/g, '') + '</span>: ';
+				if (pVal)
+					r = r + (pVal[0] == '"' ? str : val) + pVal + '</span>';
+				return r + (pEnd || '');
+			};
+			prettyPrint = function (obj) {
+				var jsonLine = /^( *)("[\w]+": )?("[^"]*"|[\w.+-]*)?([,[{])?$/mg;
+				return JSON.stringify(obj, null, 3)
+					.replace(/&/g, '&amp;').replace(/\\"/g, '&quot;')
+					.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+					.replace(jsonLine, replacer);
+			}
+
+			return {
+				prettyPrint: prettyPrint
+			}
+		}();
+
+		function handleKeyPress() {
+			if (timer) {
+				clearTimeout(timer);
+			}
+			timer = setTimeout(() => {
+				var filter = document.getElementById("jsonFilter").value;
+				filter = encodeURIComponent(filter);
+				var input = document.getElementById("jsonInput").value;
+				fetch("api/?q=" + filter, {
+					body: input,
+					headers: {
+						"content-type": "application/json"
+					},
+					method: "POST"
+				}).then((response) => {
+					response.clone().json().then((value) => {
+						document.getElementById("output").innerHTML = jsonFuncs.prettyPrint(value);
+					}).catch(() => {
+						response.text().then((value) => {
+							document.getElementById("output").innerHTML = value;
+						});
+					});
+
+				});
+			}, 300);
+		};
+
+		window.onload = () => {
+			document.getElementById("jsonFilter").onkeyup = handleKeyPress;
+			let inputElement = document.getElementById("jsonInput");
+			inputElement.onkeyup = handleKeyPress;
+			setTimeout(() => {
+				inputElement.focus();
+			}, 250);
+		};
+
+	</script>
+</body>
+
+</html>
